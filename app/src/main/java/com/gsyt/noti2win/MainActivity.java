@@ -1,7 +1,8 @@
 package com.gsyt.noti2win;
 
 
-import android.app.Application;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -26,7 +27,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final int CAMERA_PERMISSION_REQUEST_CODE = 1;
-
+    private static final String TAG = "MainActivity";
     private static final int REQUEST_CODE_SCAN = 100;
 
     private int port = 0;
@@ -61,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
             startActivity(intent);
         });
-
+        loadNotiListener(this);
 
     }
 
@@ -127,24 +128,44 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private boolean isNotificationListenerEnabled(Context context) {
+        String pkgName = context.getPackageName();
+        final String flat = Settings.Secure.getString(context.getContentResolver(),
+                "enabled_notification_listeners");
+        return flat != null && flat.contains(pkgName);
+    }
 
+    private void loadNotiListener(Context context) {
+        if (isNotificationListenerEnabled(context)){
+            ComponentName thisComponent = new ComponentName(this, NotificationService.class);
+            PackageManager pm = getPackageManager();
+            pm.setComponentEnabledSetting(thisComponent,
+                    PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
+                    PackageManager.DONT_KILL_APP);
+            pm.setComponentEnabledSetting(thisComponent,
+                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
+                    PackageManager.DONT_KILL_APP);
+            Log.d(TAG, "loadNotiListener!");
+        }else{
+            Log.d(TAG, "isNotificationListenerEnabled: false");
+        }
 
+    }
 
-private void testLink(String url,String msg) {
-    executor.executeJob(() -> {
-        if (Utils.sendMsg(url,msg)) {
-            serviceAddr.setIpAddress(url);
-           runOnUiThread(() -> {
-               if (loadingDialog != null&&loadingDialog.isShowing()) {
-                   handler.postDelayed(()->{
-                       loadingDialog.dismiss();
-                       Toast.makeText(MainActivity.this, "连接成功", Toast.LENGTH_SHORT).show();
-                       textView.setText("已连接到："+ url);
+    private void testLink(String url,String msg) {
+        executor.executeJob(() -> {
+          if (Utils.sendMsg(url,msg)) {
+             serviceAddr.setIpAddress(url);
+              runOnUiThread(() -> {
+                   if (loadingDialog != null&&loadingDialog.isShowing()) {
+                       handler.postDelayed(()->{
+                          loadingDialog.dismiss();
+                          Toast.makeText(MainActivity.this, "连接成功", Toast.LENGTH_SHORT).show();
+                           textView.setText("已连接到："+ url);
                        },1000);
                }
            });
         }
     });
-}
-
+    }
 }
